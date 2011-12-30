@@ -8,5 +8,5 @@ For further information, please refer to the "LICENSE" file
 
 === Version 0.1 ===
 Initial release.
-Works fine if all inputs are correct
+Works fine... if all inputs are correct ;)
 Doesn't handle any exception being raised, such as not having internet access, providing incorrect password ...

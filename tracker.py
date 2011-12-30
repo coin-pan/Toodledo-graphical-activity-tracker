@@ -1,5 +1,26 @@
 #!/usr/bin/python
 # -*- coding: UTF-8 -*-
+#
+#
+#    Toodledo Activity Tracker & Plotter
+#    Copyright (C) 2011  Marc Chauvet (marc DOT chauvet AT gmail DOT com)
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+#
+
+
 
 import urllib2
 import re
@@ -11,7 +32,7 @@ import os
 import datetime
 import pylab
 
-# From joeld and crazy2be on http://stackoverflow.com/questions/287871/print-in-terminal-with-colors-using-python
+# From joeld and crazy2be on http://stackoverflow.com/a/287944
 class bcolors:
 	HEADER = '\033[95m'
 	OKBLUE = '\033[94m'
@@ -93,7 +114,15 @@ def lookup_sessiontoken(userid, appid, apptoken, version):
 
 if __name__ == '__main__':
 
-	print bcolors.BOLD+"\nToodledo Activity Representer"+bcolors.ENDC+"\n\nProceeding with initial checks...\n"
+	print """
+    Toodledo Activity Tracker & Plotter  Copyright (C) 2011  Marc Chauvet (marc DOT chauvet AT gmail DOT com)
+    This program comes with ABSOLUTELY NO WARRANTY;
+    This is free software, and you are welcome to redistribute it
+    under certain conditions;
+    
+    For further information, please refer to the "LICENSE" file"""
+
+	print bcolors.BOLD+"\n\n\nToodledo Activity Tracker & Plotter"+bcolors.ENDC+"\n\nProceeding with initial checks...\n"
 
 	padding = 20
 	print "Application ID: ".ljust(padding) + ((bcolors.OKGREEN+"[OK]") if isOK_appid() else (bcolors.FAIL+bcolors.BOLD+"[NOK]")) + bcolors.ENDC
@@ -158,10 +187,12 @@ of information in the relevant files for you. But before doing so, you should be
 	print "Key: ".ljust(padding) + bcolors.OKGREEN + "[OK]" + bcolors.ENDC
 
 
-	print "\n\nRetrieving completed tasks... "
+	print "\n\nRetrieving completed tasks..."
 	out = json.loads(urllib2.urlopen("http://api.toodledo.com/2/tasks/get.php?key="+get_key()+";comp=1").read())
 	print "Retrieved "+str(len(out)-1)+" completed tasks"
 	
+
+	print "\n\nPreparing plotting..."
 
 	# Count per date the number of closed tasks on that date
 	per_day_activity={}
@@ -192,6 +223,10 @@ of information in the relevant files for you. But before doing so, you should be
 	Minimum_Acceptable_Activity = [minimum_acceptable_per_day_activity for x in X]
 
 
+	print "Plotting prepared"
+
+	print "\n\nPlotting..."
+
 
 	pylab.plot(X, Minimum_Acceptable_Activity, "r--")
 	#pylab.bar([(x-last_plotted_day).days for x in X], Tasks, width=1, bottom=0, color="g", align="center")
@@ -209,7 +244,7 @@ of information in the relevant files for you. But before doing so, you should be
 
 
 
-
+	print "\n\nBye bye\n\n"
 
 
 
