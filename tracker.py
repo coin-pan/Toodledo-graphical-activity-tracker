@@ -44,7 +44,7 @@ class bcolors:
 
 
 
-version = "0"
+version = "0.1"
 number_of_plotted_days = 30
 
 def remove_comments(string):
