@@ -1,0 +1,5 @@
+* Comment the code
+* Handle expectable exceptions:
+	- wrong password provided by user
+	- no internet access
+* Provide prettier/smoother plots

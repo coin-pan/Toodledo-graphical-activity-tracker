@@ -1,0 +1,4 @@
+# Example of what should be in the appid.dat file
+# Put here the application ID provided by Toodledo
+# and be sure to remove any trailing carriage return or white space after it
+my-application-id

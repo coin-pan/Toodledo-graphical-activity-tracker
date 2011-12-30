@@ -1,0 +1,12 @@
+Toodledo Activity Tracker & Plotter
+Copyright (C) 2011  Marc Chauvet
+
+This program comes with ABSOLUTELY NO WARRANTY;
+This is free software, and you are welcome to redistribute it under certain conditions;
+For further information, please refer to the "LICENSE" file
+
+
+=== Version 0.1 ===
+Initial release.
+Works fine if all inputs are correct
+Doesn't handle any exception being raised, such as not having internet access, providing incorrect password ...
