@@ -31,6 +31,7 @@ import sys
 import os
 import datetime
 import pylab
+import time
 
 # From joeld and crazy2be on http://stackoverflow.com/a/287944
 class bcolors:
@@ -41,6 +42,18 @@ class bcolors:
 	FAIL = '\033[91m'
 	ENDC = '\033[0m'
 	BOLD = "\033[1m"
+
+
+# From William Park on https://www.physics.rutgers.edu/~masud/computing/WPark_recipes_in_python.html
+def conv(x, y):
+	P, Q, N = len(x), len(y), len(x)+len(y)-1
+	z = []
+	for k in range(N):
+		t, lower, upper = 0, max(0, k-(Q-1)), min(P-1, k)
+		for i in range(lower, upper+1):
+			t = t + x[i] * y[k-i]
+		z.append(t)
+	return z
 
 
 
@@ -109,6 +122,40 @@ def lookup_sessiontoken(userid, appid, apptoken, version):
 	out = json.loads(urllib2.urlopen("http://api.toodledo.com/2/account/token.php?userid="+userid+";appid="+appid+";vers="+version+";sig="+signature).read())
 	sessiontoken = out["token"]
 	return sessiontoken
+
+# Calculates the importance a task had at a given time
+def importance(task,timestamp):
+	if timestamp < task['added']:
+		return(-1)
+	if timestamp < task['startdate']:
+		return(-1)
+	if (task['completed'] > 0) and (timestamp > task['completed']):
+		return(-1)
+	imp = 0
+	
+	if task['duedate'] > 0:
+		days_before_deadline = (datetime.date.fromtimestamp(task['duedate'])- datetime.date.fromtimestamp(timestamp)).days
+		if days_before_deadline < 0:
+			imp = 6
+		elif days_before_deadline == 0:
+			imp = 5
+		elif days_before_deadline == 1:
+			imp = 3
+		elif days_before_deadline <=6:
+			imp = 2
+		elif days_before_deadline <= 13:
+			imp = 1
+	
+	imp += int(task['priority']) +2 + int(task['star'])
+	return(imp)
+
+# Calculates the meta-importance a task had at a given time
+def meta_importance(task,timestamp):
+	output={-1:-1,1:0,2:0,3:1,4:1,5:1,6:2,7:2,8:2,9:3,10:3,11:3,12:3}
+	return(output[importance(task,timestamp)])
+
+
+
 
 
 
@@ -187,53 +234,103 @@ of information in the relevant files for you. But before doing so, you should be
 	print "Key: ".ljust(padding) + bcolors.OKGREEN + "[OK]" + bcolors.ENDC
 
 
-	print "\n\nRetrieving completed tasks..."
-	out = json.loads(urllib2.urlopen("http://api.toodledo.com/2/tasks/get.php?key="+get_key()+";comp=1").read())
-	print "Retrieved "+str(len(out)-1)+" completed tasks"
+	print "\n\nRetrieving all tasks..."
+#	out = json.loads(urllib2.urlopen("http://api.toodledo.com/2/tasks/get.php?key="+get_key()+";comp=1").read())
+	all_tasks = json.loads(urllib2.urlopen("http://api.toodledo.com/2/tasks/get.php?key="+get_key()+";fields=priority,duedate,star,startdate,added").read())[1:]
+	print "Retrieved "+str(len(all_tasks))+" tasks"
 	
 
 	print "\n\nPreparing plotting..."
 
+	last_completed_timestamp = max([t['completed'] for t in all_tasks])
+	last_plotted_timestamp = last_completed_timestamp + (int((last_completed_timestamp-time.time())/(60*60*24))+1)*(60*60*24)
+	first_plotted_timestamp = last_plotted_timestamp - number_of_plotted_days * (60*60*24)
+	Plotted_timestamps = range(first_plotted_timestamp, last_plotted_timestamp +1, 60*60*24)
+
+	d={}
+	for timestamp in Plotted_timestamps:
+		a = [meta_importance(task,timestamp) for task in all_tasks]
+		d[timestamp]={}
+		for x in [-1,0,1,2,3]:
+			d[timestamp][x]=a.count(x)
+	
+
+	Meta_Imp3 = [d[timestamp][3] for timestamp in Plotted_timestamps]
+	Meta_Imp2 = [d[timestamp][2]+d[timestamp][3] for timestamp in Plotted_timestamps]
+	Meta_Imp1 = [d[timestamp][1]+d[timestamp][2]+d[timestamp][3] for timestamp in Plotted_timestamps]
+	
+	pylab.fill_between(Plotted_timestamps, 0, Meta_Imp3, facecolor='red')
+	pylab.fill_between(Plotted_timestamps, Meta_Imp3, Meta_Imp2, facecolor='orange')
+	pylab.fill_between(Plotted_timestamps, Meta_Imp2, Meta_Imp1, facecolor='green')
+	pylab.xlim( min(Plotted_timestamps), max(Plotted_timestamps) )
+	pylab.show()
+
 	# Count per date the number of closed tasks on that date
-	per_day_activity={}
-	for d in [datetime.date.fromtimestamp(x[u'completed']) for x in out[1:]]:
+#	per_day_activity={}
+#	for d in [datetime.date.fromtimestamp(x[u'completed']) for x in all_tasks if x[u'completed']>0]:
+#		try:
+#			per_day_activity[d]+=1
+#		except KeyError:
+#			per_day_activity[d]=1
+#
+#	last_plotted_day=datetime.date.today()
+#
+	# Count per hour the number of closed tasks on that hour
+	per_hour_activity={}
+	for d in [x[u'completed'] / 3600 for x in all_tasks if x[u'completed']>0]:
 		try:
-			per_day_activity[d]+=1
+			per_hour_activity[d]+=1
 		except KeyError:
-			per_day_activity[d]=1
+			per_hour_activity[d]=1
 
+	last_plotted_hour=int(round(time.time()/3600))
 
-
-	last_plotted_day=datetime.date.today()
 
 
 	# List all the days to be plotted, from the oldest to today
-	X = [last_plotted_day-datetime.timedelta(x) for x in range(number_of_plotted_days,-1,-1)]
+#	X = [last_plotted_day-datetime.timedelta(x) for x in range(number_of_plotted_days,-1,-1)]
+
+	# List all the hours to be plotted, from the oldest to today
+	XX = range(min(per_hour_activity),last_plotted_hour)
+
 
 	# Plot the number of tasks done each day
+#	Tasks = []
+#	for x in X:
+#		try:
+#			Tasks.append(per_day_activity[x])
+#               except KeyError:
+#			Tasks.append(0)
+
+
+	# Plot the number of tasks done each hour
 	Tasks = []
-	for x in X:
+	for x in XX:
 		try:
-			Tasks.append(per_day_activity[x])
+			Tasks.append(per_hour_activity[x])
                 except KeyError:
-			Tasks.append(0)
+			Tasks.append(None)
+
 	
 	# Minimum acceptable per day activity
 	minimum_acceptable_per_day_activity = 1
-	Minimum_Acceptable_Activity = [minimum_acceptable_per_day_activity for x in X]
+	Minimum_Acceptable_Activity = [minimum_acceptable_per_day_activity for x in XX]
 
 
 	print "Plotting prepared"
 
 	print "\n\nPlotting..."
 
+	pylab.bar([x for x in range(len(XX)) if Tasks[x]!=None], [t for t in Tasks if t!=None], width=3, bottom=0, color="g", align="center")
 
-	pylab.plot(X, Minimum_Acceptable_Activity, "r--")
+	pylab.plot(XX, Minimum_Acceptable_Activity, "r--")
+
+
 	#pylab.bar([(x-last_plotted_day).days for x in X], Tasks, width=1, bottom=0, color="g", align="center")
-	pylab.fill_between(X,Tasks,Minimum_Acceptable_Activity,where=[Tasks[i]>=Minimum_Acceptable_Activity[i] for i in range(len(Tasks))],facecolor='green', interpolate=True)
-	pylab.fill_between(X,Tasks,Minimum_Acceptable_Activity,where=[Tasks[i]<Minimum_Acceptable_Activity[i] for i in range(len(Tasks))],facecolor='red', interpolate=True)
+#pylab.fill_between(X,Tasks,Minimum_Acceptable_Activity,where=[Tasks[i]>=Minimum_Acceptable_Activity[i] for i in range(len(Tasks))],facecolor='green', interpolate=True)
+#pylab.fill_between(X,Tasks,Minimum_Acceptable_Activity,where=[Tasks[i]<Minimum_Acceptable_Activity[i] for i in range(len(Tasks))],facecolor='red', interpolate=True)
 #	pylab.xlim( -number_of_plotted_days, 1 )  
-	pylab.show()
+
 	#pylab.savefig("plot_toodledo_activity.png")
 
 	# Look at http://matplotlib.sourceforge.net/examples/api/path_patch_demo.html
@@ -241,7 +338,7 @@ of information in the relevant files for you. But before doing so, you should be
 
 
 
-
+	pylab.show()
 
 
 	print "\n\nBye bye\n\n"
