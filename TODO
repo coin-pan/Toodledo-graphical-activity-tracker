@@ -3,3 +3,4 @@
 	- wrong password provided by user
 	- no internet access
 * Provide prettier/smoother plots
+* If key.dat exists, try to use it before going through the whole key renewal process
